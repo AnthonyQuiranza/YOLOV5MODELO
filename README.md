@@ -1,1 +1,2 @@
-Modelo YoloV5
+Yolov5 model
+based on official documentation.
