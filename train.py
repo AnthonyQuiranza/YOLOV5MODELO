@@ -75,7 +75,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     if isinstance(hyp, str):
         with open(hyp, errors='ignore') as f:
             hyp = yaml.safe_load(f)  # load hyps dict
-    LOGGER.info(colorstr('hyperparameters: ') + ', '.join(f'{k}={v}' for k, v in hyp.items()))
+    LOGGER.info(colorstr('hyperparámetros: ') + ', '.join(f'{k}={v}' for k, v in hyp.items()))
 
     # Save run settings
     if not evolve:
@@ -121,7 +121,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
         csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)  # intersect
         model.load_state_dict(csd, strict=False)  # load
-        LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
+        LOGGER.info(f'Transferidos {len(csd)}/{len(model.state_dict())} elementos para {weights}')  # report
     else:
         model = Model(cfg, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
 
@@ -130,7 +130,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     for k, v in model.named_parameters():
         v.requires_grad = True  # train all layers
         if any(x in k for x in freeze):
-            LOGGER.info(f'freezing {k}')
+            LOGGER.info(f'Congelando {k}')
             v.requires_grad = False
 
     # Image size
@@ -166,7 +166,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
 
     optimizer.add_param_group({'params': g1, 'weight_decay': hyp['weight_decay']})  # add g1 with weight_decay
     optimizer.add_param_group({'params': g2})  # add g2 (biases)
-    LOGGER.info(f"{colorstr('optimizer:')} {type(optimizer).__name__} with parameter groups "
+    LOGGER.info(f"{colorstr('optimizador:')} {type(optimizer).__name__} con grupos de parámetro "
                 f"{len(g0)} weight (no decay), {len(g1)} weight, {len(g2)} bias")
     del g0, g1, g2
 
@@ -196,9 +196,9 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         # Epochs
         start_epoch = ckpt['epoch'] + 1
         if resume:
-            assert start_epoch > 0, f'{weights} training to {epochs} epochs is finished, nothing to resume.'
+            assert start_epoch > 0, f'{weights} Entrenamiento con {epochs} repeticiones ha finalizado.'
         if epochs < start_epoch:
-            LOGGER.info(f"{weights} has been trained for {ckpt['epoch']} epochs. Fine-tuning for {epochs} more epochs.")
+            LOGGER.info(f"{weights} ha sido entrenado con {ckpt['epoch']} repeticiones. puesta a punto para {epochs} mas repeticiones.")
             epochs += ckpt['epoch']  # finetune additional epochs
 
         del ckpt, csd
@@ -211,7 +211,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     # SyncBatchNorm
     if opt.sync_bn and cuda and RANK != -1:
         model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(device)
-        LOGGER.info('Using SyncBatchNorm()')
+        LOGGER.info('Usando SyncBatchNorm()')
 
     # Trainloader
     train_loader, dataset = create_dataloader(train_path, imgsz, batch_size // WORLD_SIZE, gs, single_cls,
@@ -270,10 +270,10 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
     scaler = amp.GradScaler(enabled=cuda)
     stopper = EarlyStopping(patience=opt.patience)
     compute_loss = ComputeLoss(model)  # init loss class
-    LOGGER.info(f'Image sizes {imgsz} train, {imgsz} val\n'
-                f'Using {train_loader.num_workers * WORLD_SIZE} dataloader workers\n'
-                f"Logging results to {colorstr('bold', save_dir)}\n"
-                f'Starting training for {epochs} epochs...')
+    LOGGER.info(f'Tamaño img {imgsz} entrenada, {imgsz} val\n'
+                f'Usando {train_loader.num_workers * WORLD_SIZE} carga dataloaders\n'
+                f"Reg resultados en {colorstr('bold', save_dir)}\n"
+                f'Iniciando entrenamiento para  {epochs} repeticiones (epochs)...')
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         model.train()
 
@@ -291,7 +291,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         if RANK != -1:
             train_loader.sampler.set_epoch(epoch)
         pbar = enumerate(train_loader)
-        LOGGER.info(('\n' + '%10s' * 7) % ('Epoch', 'gpu_mem', 'box', 'obj', 'cls', 'labels', 'img_size'))
+        LOGGER.info(('\n' + '%10s' * 7) % ('Repet', 'mem_gpu', 'box', 'obj', 'cls', 'etiquetas', 'tamaño_img'))
         if RANK in [-1, 0]:
             pbar = tqdm(pbar, total=nb, bar_format='{l_bar}{bar:10}{r_bar}{bar:-10b}')  # progress bar
         optimizer.zero_grad()
@@ -415,12 +415,12 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training -----------------------------------------------------------------------------------------------------
     if RANK in [-1, 0]:
-        LOGGER.info(f'\n{epoch - start_epoch + 1} epochs completed in {(time.time() - t0) / 3600:.3f} hours.')
+        LOGGER.info(f'\n{epoch - start_epoch + 1} repeticiones completadas en {(time.time() - t0) / 3600:.3f} horas.')
         for f in last, best:
             if f.exists():
                 strip_optimizer(f)  # strip optimizers
                 if f is best:
-                    LOGGER.info(f'\nValidating {f}...')
+                    LOGGER.info(f'\nValidando {f}...')
                     results, _, _ = val.run(data_dict,
                                             batch_size=batch_size // WORLD_SIZE * 2,
                                             imgsz=imgsz,
@@ -438,7 +438,7 @@ def train(hyp,  # path/to/hyp.yaml or hyp dictionary
                         callbacks.run('on_fit_epoch_end', list(mloss) + list(results) + lr, epoch, best_fitness, fi)
 
         callbacks.run('on_train_end', last, best, plots, epoch, results)
-        LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}")
+        LOGGER.info(f"Resultados guardados en {colorstr('bold', save_dir)}")
 
     torch.cuda.empty_cache()
     return results
@@ -503,7 +503,7 @@ def main(opt, callbacks=Callbacks()):
         with open(Path(ckpt).parent.parent / 'opt.yaml', errors='ignore') as f:
             opt = argparse.Namespace(**yaml.safe_load(f))  # replace
         opt.cfg, opt.weights, opt.resume = '', ckpt, True  # reinstate
-        LOGGER.info(f'Resuming training from {ckpt}')
+        LOGGER.info(f'Reanudación del entrenamiento desde {ckpt}')
     else:
         opt.data, opt.cfg, opt.hyp, opt.weights, opt.project = \
             check_file(opt.data), check_yaml(opt.cfg), check_yaml(opt.hyp), str(opt.weights), str(opt.project)  # checks
@@ -528,7 +528,7 @@ def main(opt, callbacks=Callbacks()):
     if not opt.evolve:
         train(opt.hyp, opt, device, callbacks)
         if WORLD_SIZE > 1 and RANK == 0:
-            LOGGER.info('Destroying process group... ')
+            LOGGER.info('Destrucción del grupo de procesos... ')
             dist.destroy_process_group()
 
     # Evolve hyperparameters (optional)
@@ -606,17 +606,17 @@ def main(opt, callbacks=Callbacks()):
                 hyp[k] = min(hyp[k], v[2])  # upper limit
                 hyp[k] = round(hyp[k], 5)  # significant digits
 
-            # Train mutation
+            # Cambios de entrenamiento
             results = train(hyp.copy(), opt, device, callbacks)
             callbacks = Callbacks()
-            # Write mutation results
+            # Escribir cambios
             print_mutation(results, hyp.copy(), save_dir, opt.bucket)
 
-        # Plot results
+        # Dibujar resultados
         plot_evolve(evolve_csv)
-        LOGGER.info(f'Hyperparameter evolution finished\n'
-                    f"Results saved to {colorstr('bold', save_dir)}\n"
-                    f'Use best hyperparameters example: $ python train.py --hyp {evolve_yaml}')
+        LOGGER.info(f'Evolución de hiperparámetros terminada\n'
+                    f"Resultados guardados en {colorstr('bold', save_dir)}\n"
+                    f'Use el mejor ejemplo de hiperparámetros: $ python train.py --hyp {evolve_yaml}')
 
 
 def run(**kwargs):
